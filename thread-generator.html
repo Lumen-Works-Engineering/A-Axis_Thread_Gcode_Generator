@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A-Axis Thread G-code Generator - LumenWorksEngineering.com</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        h1 {
+            color: #00d4ff;
+            border-bottom: 2px solid #00d4ff;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #00d4ff;
+            font-size: 1.1em;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .settings-panel {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .output-panel {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #aaa;
+            font-size: 0.9em;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background: #0f0f23;
+            color: #eee;
+            font-size: 14px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+        .recommendation {
+            font-size: 0.8em;
+            color: #00d4ff;
+            margin-top: 3px;
+        }
+        .inline-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .checkbox-group input {
+            width: auto;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .btn-primary {
+            background: #00d4ff;
+            color: #000;
+        }
+        .btn-primary:hover {
+            background: #00b8e6;
+        }
+        .btn-secondary {
+            background: #444;
+            color: #eee;
+        }
+        .btn-secondary:hover {
+            background: #555;
+        }
+        .btn-success {
+            background: #00c853;
+            color: #000;
+        }
+        .btn-warning {
+            background: #ff9800;
+            color: #000;
+        }
+        #gcode-output {
+            width: 100%;
+            height: 400px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            background: #0a0a1a;
+            border: 1px solid #333;
+            color: #0f0;
+        }
+        .passes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .passes-table th, .passes-table td {
+            padding: 8px;
+            border: 1px solid #333;
+            text-align: center;
+        }
+        .passes-table th {
+            background: #0f0f23;
+            color: #00d4ff;
+        }
+        .passes-table input {
+            width: 80px;
+            text-align: center;
+        }
+        .passes-table input[type="checkbox"] {
+            width: auto;
+        }
+        .calculated-value {
+            background: #1a3a1a;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .calculated-value span {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        .section-divider {
+            border-top: 1px solid #333;
+            margin: 20px 0;
+        }
+        .warning {
+            background: #3a2a1a;
+            border-left: 3px solid #ff9800;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+        .collapsible {
+            cursor: pointer;
+            user-select: none;
+        }
+        .collapsible:after {
+            content: ' ▼';
+            font-size: 0.8em;
+        }
+        .collapsible.collapsed:after {
+            content: ' ►';
+        }
+        .collapsible-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .collapsible-content.collapsed {
+            max-height: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>A-Axis Thread G-code Generator</h1>
+    
+    <div class="container">
+        <div class="settings-panel">
+            <h2>Thread Parameters</h2>
+            <div class="inline-group">
+                <div class="form-group">
+                    <label>Major Diameter (mm)</label>
+                    <input type="number" id="majorDiameter" value="25" step="0.1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Thread Pitch (mm)</label>
+                    <input type="number" id="pitch" value="1" step="0.25" min="0.5" max="3">
+                </div>
+            </div>
+            <div class="inline-group">
+                <div class="form-group">
+                    <label>Thread Length (mm)</label>
+                    <input type="number" id="threadLength" value="20" step="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Thread Direction</label>
+                    <select id="threadDirection">
+                        <option value="right">Right-hand (standard)</option>
+                        <option value="left">Left-hand</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="calculated-value">
+                Calculated thread depth (60°): <span id="calcDepth">0.613</span> mm
+                <br>Thread root diameter: <span id="calcRootDia">23.77</span> mm
+            </div>
+
+            <div class="form-group">
+                <label>Target Thread Depth (mm) - Adjust for fit</label>
+                <input type="number" id="targetDepth" value="0.58" step="0.01" min="0.1">
+                <div class="recommendation">Start slightly shallow, increase if threads are loose</div>
+            </div>
+
+            <h2>Z Reference & Position</h2>
+            <div class="inline-group">
+                <div class="form-group">
+                    <label>Z Zero Reference</label>
+                    <select id="zReference">
+                        <option value="center">Center of A-axis</option>
+                        <option value="surface">Stock OD Surface</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Lead-in Distance (mm)</label>
+                    <input type="number" id="leadIn" value="2" step="0.5" min="0">
+                    <div class="recommendation">Air cut before part for clean thread start</div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Safe Retract Height (mm above surface)</label>
+                <input type="number" id="safeRetract" value="2" step="0.5" min="0.5">
+            </div>
+
+            <h2>Material & Speeds</h2>
+            <div class="form-group">
+                <label>Material</label>
+                <select id="material">
+                    <option value="aluminum">Aluminum</option>
+                    <option value="copper">Copper</option>
+                    <option value="brass">Brass</option>
+                    <option value="acrylic">Plastic / Acrylic</option>
+                    <option value="steel">Mild Steel</option>
+                </select>
+            </div>
+            <div class="inline-group">
+                <div class="form-group">
+                    <label>Spindle Speed (RPM)</label>
+                    <input type="number" id="spindleSpeed" value="12000" step="500" min="1000">
+                    <div class="recommendation" id="spindleRec">Recommended: 10000-15000</div>
+                </div>
+                <div class="form-group">
+                    <label>Feed Rate (mm/min)</label>
+                    <input type="number" id="feedRate" value="900" step="50" min="100">
+                    <div class="recommendation" id="feedRec">Recommended: 600-1200</div>
+                </div>
+            </div>
+
+            <h2>Tool Settings</h2>
+            <div class="inline-group">
+                <div class="form-group">
+                    <label>V-bit Angle (degrees)</label>
+                    <input type="number" id="vbitAngle" value="60" step="1" min="30" max="90">
+                </div>
+                <div class="form-group">
+                    <label>Number of Flutes</label>
+                    <input type="number" id="flutes" value="3" step="1" min="1" max="6">
+                </div>
+            </div>
+
+            <h2>Passes</h2>
+            <div class="inline-group">
+                <div class="form-group">
+                    <label>Number of Passes</label>
+                    <input type="number" id="numPasses" value="4" step="1" min="1" max="10">
+                </div>
+                <div class="form-group">
+                    <label>Retract Style</label>
+                    <select id="retractStyle">
+                        <option value="quick">Quick Retract</option>
+                        <option value="spiral">Spiral Retract (gentler)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="testFitMode">
+                <label for="testFitMode" style="display:inline; color:#eee;">Test Fit Mode (pause after each pass)</label>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="finishingPass">
+                <label for="finishingPass" style="display:inline; color:#eee;">Add finishing/spring pass</label>
+            </div>
+
+            <button class="btn-secondary" onclick="calculatePasses()">Calculate Passes</button>
+            
+            <table class="passes-table" id="passesTable">
+                <thead>
+                    <tr>
+                        <th>Pass</th>
+                        <th>Depth (mm)</th>
+                        <th>Cumulative</th>
+                        <th>Pause After</th>
+                    </tr>
+                </thead>
+                <tbody id="passesBody">
+                </tbody>
+            </table>
+
+            <h2 class="collapsible" onclick="toggleSection('advancedSection')">Advanced Options</h2>
+            <div id="advancedSection" class="collapsible-content">
+                <div class="form-group">
+                    <label>Thread Start Angle (degrees)</label>
+                    <input type="number" id="startAngle" value="0" step="1" min="0" max="359">
+                    <div class="recommendation">For multi-start threads or feature alignment</div>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="dryRun">
+                    <label for="dryRun" style="display:inline; color:#eee;">Dry Run Mode (+5mm Z offset)</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enableMist">
+                    <label for="enableMist" style="display:inline; color:#eee;">Enable Mist Coolant</label>
+                </div>
+                <div class="form-group">
+                    <label>Mist ON G-code</label>
+                    <input type="text" id="mistOn" value="M7" placeholder="M7">
+                </div>
+                <div class="form-group">
+                    <label>Mist OFF G-code</label>
+                    <input type="text" id="mistOff" value="M9" placeholder="M9">
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enableVacuum">
+                    <label for="enableVacuum" style="display:inline; color:#eee;">Enable Vacuum</label>
+                </div>
+                <div class="form-group">
+                    <label>Vacuum ON G-code</label>
+                    <input type="text" id="vacuumOn" value="M8" placeholder="M8">
+                </div>
+                <div class="form-group">
+                    <label>Vacuum OFF G-code</label>
+                    <input type="text" id="vacuumOff" value="M9" placeholder="M9">
+                </div>
+            </div>
+
+            <h2 class="collapsible" onclick="toggleSection('customCodeSection')">Custom Header/Footer</h2>
+            <div id="customCodeSection" class="collapsible-content">
+                <div class="form-group">
+                    <label>Header Code (added after setup)</label>
+                    <textarea id="headerCode" rows="3" placeholder="; Custom header code"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Footer Code (added before M30)</label>
+                    <textarea id="footerCode" rows="3" placeholder="; Custom footer code"></textarea>
+                </div>
+            </div>
+
+            <h2>Notes</h2>
+            <div class="form-group">
+                <textarea id="notes" rows="3" placeholder="e.g., Fits Convoy S2+ head perfectly at 0.56mm depth"></textarea>
+            </div>
+
+        </div>
+
+        <div class="output-panel">
+            <h2>Generated G-code</h2>
+            <div style="margin-bottom: 15px;">
+                <button class="btn-primary" onclick="generateGcode()">Generate G-code</button>
+                <button class="btn-secondary" onclick="copyGcode()">Copy to Clipboard</button>
+                <button class="btn-secondary" onclick="downloadGcode()">Download .nc</button>
+            </div>
+            <textarea id="gcode-output" readonly></textarea>
+
+            <h2>Presets</h2>
+            <div class="form-group">
+                <label>Preset Name</label>
+                <input type="text" id="presetName" placeholder="e.g., M25x1 Convoy S2+">
+            </div>
+            <div>
+                <button class="btn-success" onclick="savePreset()">Save Preset</button>
+                <button class="btn-secondary" onclick="exportPresets()">Export All (JSON)</button>
+                <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Import JSON</button>
+                <input type="file" id="importFile" style="display:none" accept=".json" onchange="importPresets(event)">
+            </div>
+            
+            <div class="form-group" style="margin-top: 15px;">
+                <label>Load Preset</label>
+                <select id="presetList" onchange="loadPreset()">
+                    <option value="">-- Select Preset --</option>
+                </select>
+                <button class="btn-warning" onclick="deletePreset()" style="margin-top:10px;">Delete Selected</button>
+            </div>
+
+            <div class="warning" style="margin-top: 20px;">
+                <strong>Remember:</strong> Always verify Z zero and do a dry run on new setups!
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        // Material recommendations
+        const materialData = {
+            aluminum: { spindleMin: 10000, spindleMax: 15000, feedMin: 600, feedMax: 1200 },
+            copper: { spindleMin: 8000, spindleMax: 12000, feedMin: 400, feedMax: 800 },
+            brass: { spindleMin: 8000, spindleMax: 12000, feedMin: 500, feedMax: 1000 },
+            acrylic: { spindleMin: 12000, spindleMax: 18000, feedMin: 800, feedMax: 1500 },
+            steel: { spindleMin: 3000, spindleMax: 6000, feedMin: 200, feedMax: 500 }
+        };
+
+        // Pass depth distribution (lathe practice)
+        const passDistribution = [0.40, 0.25, 0.20, 0.10, 0.05]; // For up to 5 passes
+
+        let passDepths = [];
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPresetsToDropdown();
+            updateCalculations();
+            calculatePasses();
+            updateMaterialRecommendations();
+            
+            // Add event listeners for real-time updates
+            document.getElementById('pitch').addEventListener('input', updateCalculations);
+            document.getElementById('majorDiameter').addEventListener('input', updateCalculations);
+            document.getElementById('targetDepth').addEventListener('input', calculatePasses);
+            document.getElementById('numPasses').addEventListener('input', calculatePasses);
+            document.getElementById('material').addEventListener('change', updateMaterialRecommendations);
+            document.getElementById('testFitMode').addEventListener('change', calculatePasses);
+            document.getElementById('finishingPass').addEventListener('change', calculatePasses);
+        });
+
+        function updateCalculations() {
+            const pitch = parseFloat(document.getElementById('pitch').value) || 1;
+            const majorDia = parseFloat(document.getElementById('majorDiameter').value) || 25;
+            
+            // 60 degree thread depth = pitch * 0.6134
+            const calcDepth = (pitch * 0.6134).toFixed(3);
+            const rootDia = (majorDia - (2 * parseFloat(calcDepth))).toFixed(2);
+            
+            document.getElementById('calcDepth').textContent = calcDepth;
+            document.getElementById('calcRootDia').textContent = rootDia;
+            
+            // Update target depth suggestion
+            const targetInput = document.getElementById('targetDepth');
+            if (targetInput.value === '' || parseFloat(targetInput.value) > parseFloat(calcDepth)) {
+                targetInput.value = (parseFloat(calcDepth) * 0.95).toFixed(2); // Start 5% shallow
+            }
+        }
+
+        function updateMaterialRecommendations() {
+            const material = document.getElementById('material').value;
+            const data = materialData[material];
+            
+            document.getElementById('spindleRec').textContent = 
+                `Recommended: ${data.spindleMin}-${data.spindleMax}`;
+            document.getElementById('feedRec').textContent = 
+                `Recommended: ${data.feedMin}-${data.feedMax}`;
+        }
+
+        function calculatePasses() {
+            const totalDepth = parseFloat(document.getElementById('targetDepth').value) || 0.58;
+            let numPasses = parseInt(document.getElementById('numPasses').value) || 4;
+            const testFitMode = document.getElementById('testFitMode').checked;
+            const finishingPass = document.getElementById('finishingPass').checked;
+            
+            passDepths = [];
+            let cumulative = 0;
+            
+            // Calculate pass depths using lathe distribution
+            for (let i = 0; i < numPasses; i++) {
+                let ratio;
+                if (i < passDistribution.length) {
+                    ratio = passDistribution[i];
+                } else {
+                    ratio = 0.05; // Minimum for extra passes
+                }
+                
+                // Normalize ratios for actual number of passes
+                let normalizedDepth;
+                if (i === numPasses - 1) {
+                    // Last pass gets remainder to ensure we hit exact depth
+                    normalizedDepth = totalDepth - cumulative;
+                } else {
+                    normalizedDepth = totalDepth * ratio;
+                }
+                
+                cumulative += normalizedDepth;
+                passDepths.push({
+                    depth: normalizedDepth,
+                    cumulative: cumulative,
+                    pause: testFitMode
+                });
+            }
+            
+            // Add finishing pass if enabled
+            if (finishingPass) {
+                passDepths.push({
+                    depth: 0,
+                    cumulative: totalDepth,
+                    pause: false,
+                    isFinishing: true
+                });
+            }
+            
+            renderPassesTable();
+        }
+
+        function renderPassesTable() {
+            const tbody = document.getElementById('passesBody');
+            tbody.innerHTML = '';
+            
+            passDepths.forEach((pass, index) => {
+                const row = document.createElement('tr');
+                const isLast = index === passDepths.length - 1 && !pass.isFinishing;
+                const isFinishing = pass.isFinishing;
+                
+                row.innerHTML = `
+                    <td>${isFinishing ? 'Finish' : index + 1}</td>
+                    <td>
+                        <input type="number" 
+                               value="${pass.depth.toFixed(3)}" 
+                               step="0.01" 
+                               ${isLast || isFinishing ? 'readonly style="background:#333"' : ''}
+                               onchange="updatePassDepth(${index}, this.value)">
+                    </td>
+                    <td>${pass.cumulative.toFixed(3)}</td>
+                    <td>
+                        <input type="checkbox" 
+                               ${pass.pause ? 'checked' : ''} 
+                               ${isFinishing ? 'disabled' : ''}
+                               onchange="updatePassPause(${index}, this.checked)">
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updatePassDepth(index, value) {
+            const newDepth = parseFloat(value) || 0;
+            const totalDepth = parseFloat(document.getElementById('targetDepth').value);
+            
+            passDepths[index].depth = newDepth;
+            
+            // Recalculate cumulative and adjust last pass
+            let cumulative = 0;
+            for (let i = 0; i < passDepths.length; i++) {
+                if (passDepths[i].isFinishing) {
+                    passDepths[i].cumulative = totalDepth;
+                } else if (i === passDepths.length - 1 || 
+                          (i === passDepths.length - 2 && passDepths[passDepths.length-1].isFinishing)) {
+                    // Last cutting pass gets the remainder
+                    passDepths[i].depth = totalDepth - cumulative;
+                    passDepths[i].cumulative = totalDepth;
+                } else {
+                    cumulative += passDepths[i].depth;
+                    passDepths[i].cumulative = cumulative;
+                }
+            }
+            
+            renderPassesTable();
+        }
+
+        function updatePassPause(index, checked) {
+            passDepths[index].pause = checked;
+        }
+
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const header = section.previousElementSibling;
+            section.classList.toggle('collapsed');
+            header.classList.toggle('collapsed');
+        }
+
+
+        function generateGcode() {
+            const majorDia = parseFloat(document.getElementById('majorDiameter').value);
+            const pitch = parseFloat(document.getElementById('pitch').value);
+            const threadLength = parseFloat(document.getElementById('threadLength').value);
+            const threadDirection = document.getElementById('threadDirection').value;
+            const targetDepth = parseFloat(document.getElementById('targetDepth').value);
+            const zReference = document.getElementById('zReference').value;
+            const leadIn = parseFloat(document.getElementById('leadIn').value);
+            const safeRetract = parseFloat(document.getElementById('safeRetract').value);
+            const spindleSpeed = parseInt(document.getElementById('spindleSpeed').value);
+            const feedRate = parseInt(document.getElementById('feedRate').value);
+            const retractStyle = document.getElementById('retractStyle').value;
+            const startAngle = parseFloat(document.getElementById('startAngle').value) || 0;
+            const dryRun = document.getElementById('dryRun').checked;
+            const enableMist = document.getElementById('enableMist').checked;
+            const mistOn = document.getElementById('mistOn').value;
+            const mistOff = document.getElementById('mistOff').value;
+            const enableVacuum = document.getElementById('enableVacuum').checked;
+            const vacuumOn = document.getElementById('vacuumOn').value;
+            const vacuumOff = document.getElementById('vacuumOff').value;
+            const headerCode = document.getElementById('headerCode').value.trim();
+            const footerCode = document.getElementById('footerCode').value.trim();
+            const notes = document.getElementById('notes').value.trim();
+            
+            // Calculate positions
+            const radius = majorDia / 2;
+            const totalRotations = threadLength / pitch;
+            const totalAngle = totalRotations * 360;
+            const aDirection = threadDirection === 'right' ? 1 : -1;
+            const dryRunOffset = dryRun ? 5 : 0;
+            
+            // Z position calculation
+            let surfaceZ, safeZ;
+            if (zReference === 'center') {
+                surfaceZ = radius + dryRunOffset;
+                safeZ = radius + safeRetract + dryRunOffset;
+            } else {
+                surfaceZ = 0 + dryRunOffset;
+                safeZ = safeRetract + dryRunOffset;
+            }
+            
+            let gcode = [];
+            
+            // Header comments
+            gcode.push('; A-Axis Thread G-code Generator');
+            gcode.push('; Generated: ' + new Date().toLocaleString());
+            gcode.push(';');
+            gcode.push('; Thread: M' + majorDia + 'x' + pitch + ' ' + (threadDirection === 'right' ? 'RH' : 'LH'));
+            gcode.push('; Length: ' + threadLength + 'mm');
+            gcode.push('; Target Depth: ' + targetDepth + 'mm');
+            gcode.push('; Passes: ' + passDepths.length);
+            gcode.push('; Z Reference: ' + (zReference === 'center' ? 'A-axis center' : 'Stock surface'));
+            if (dryRun) gcode.push('; *** DRY RUN MODE - Z offset +5mm ***');
+            if (notes) gcode.push('; Notes: ' + notes);
+            gcode.push('');
+            
+            // Setup
+            gcode.push('G21 G90          ; mm, absolute');
+            gcode.push('G0 Z' + safeZ.toFixed(2) + ' X0 A' + startAngle);
+            gcode.push('');
+            gcode.push('M3 S' + spindleSpeed + '        ; Spindle on');
+            gcode.push('G4 P2            ; Wait for spindle');
+            
+            if (enableMist) gcode.push(mistOn + '               ; Mist on');
+            if (enableVacuum) gcode.push(vacuumOn + '               ; Vacuum on');
+            
+            if (headerCode) {
+                gcode.push('');
+                gcode.push('; Custom header');
+                gcode.push(headerCode);
+            }
+            
+            gcode.push('');
+            
+            // Generate passes
+            let cumulativeDepth = 0;
+            passDepths.forEach((pass, index) => {
+                const passNum = pass.isFinishing ? 'Finishing' : (index + 1);
+                cumulativeDepth = pass.cumulative;
+                
+                let cutZ;
+                if (zReference === 'center') {
+                    cutZ = radius - cumulativeDepth + dryRunOffset;
+                } else {
+                    cutZ = -cumulativeDepth + dryRunOffset;
+                }
+                
+                const startX = -leadIn;
+                const endX = threadLength;
+                const endA = startAngle + (aDirection * (totalAngle + (leadIn / pitch * 360)));
+                
+                gcode.push('; Pass ' + passNum + ' - Depth: ' + cumulativeDepth.toFixed(3) + 'mm');
+                gcode.push('G0 X' + startX.toFixed(2) + ' A' + startAngle);
+                gcode.push('G0 Z' + cutZ.toFixed(3));
+                gcode.push('G1 X' + endX.toFixed(2) + ' A' + endA.toFixed(1) + ' F' + feedRate);
+                
+                // Retract
+                if (retractStyle === 'spiral') {
+                    // Gentle spiral retract
+                    gcode.push('G1 Z' + safeZ.toFixed(2) + ' A' + (endA + aDirection * 90).toFixed(1) + ' F' + (feedRate * 2));
+                } else {
+                    // Quick retract
+                    gcode.push('G0 Z' + safeZ.toFixed(2));
+                }
+                
+                gcode.push('G0 X' + startX.toFixed(2) + ' A' + startAngle);
+                
+                // Pause if requested
+                if (pass.pause) {
+                    gcode.push('M5               ; Spindle off for test fit');
+                    if (enableMist) gcode.push(mistOff + '               ; Mist off');
+                    gcode.push('M0               ; PAUSE - Test fit threads, then resume');
+                    gcode.push('M3 S' + spindleSpeed + '        ; Spindle back on');
+                    gcode.push('G4 P2            ; Wait for spindle');
+                    if (enableMist) gcode.push(mistOn + '               ; Mist on');
+                }
+                
+                gcode.push('');
+            });
+            
+            // Footer
+            if (footerCode) {
+                gcode.push('; Custom footer');
+                gcode.push(footerCode);
+                gcode.push('');
+            }
+            
+            gcode.push('G0 Z' + safeZ.toFixed(2) + '       ; Final retract');
+            gcode.push('G0 X0 A0         ; Return to start');
+            if (enableMist) gcode.push(mistOff + '               ; Mist off');
+            if (enableVacuum) gcode.push(vacuumOff + '               ; Vacuum off');
+            gcode.push('M5               ; Spindle off');
+            gcode.push('M30              ; Program end');
+            
+            document.getElementById('gcode-output').value = gcode.join('\n');
+        }
+
+        function copyGcode() {
+            const output = document.getElementById('gcode-output');
+            output.select();
+            document.execCommand('copy');
+            alert('G-code copied to clipboard!');
+        }
+
+        function downloadGcode() {
+            const gcode = document.getElementById('gcode-output').value;
+            if (!gcode) {
+                alert('Generate G-code first!');
+                return;
+            }
+            
+            const majorDia = document.getElementById('majorDiameter').value;
+            const pitch = document.getElementById('pitch').value;
+            const filename = 'M' + majorDia + 'x' + pitch + '_thread.nc';
+            
+            const blob = new Blob([gcode], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+
+        // Preset management
+        function getSettings() {
+            return {
+                majorDiameter: document.getElementById('majorDiameter').value,
+                pitch: document.getElementById('pitch').value,
+                threadLength: document.getElementById('threadLength').value,
+                threadDirection: document.getElementById('threadDirection').value,
+                targetDepth: document.getElementById('targetDepth').value,
+                zReference: document.getElementById('zReference').value,
+                leadIn: document.getElementById('leadIn').value,
+                safeRetract: document.getElementById('safeRetract').value,
+                material: document.getElementById('material').value,
+                spindleSpeed: document.getElementById('spindleSpeed').value,
+                feedRate: document.getElementById('feedRate').value,
+                vbitAngle: document.getElementById('vbitAngle').value,
+                flutes: document.getElementById('flutes').value,
+                numPasses: document.getElementById('numPasses').value,
+                retractStyle: document.getElementById('retractStyle').value,
+                testFitMode: document.getElementById('testFitMode').checked,
+                finishingPass: document.getElementById('finishingPass').checked,
+                startAngle: document.getElementById('startAngle').value,
+                dryRun: document.getElementById('dryRun').checked,
+                enableMist: document.getElementById('enableMist').checked,
+                mistOn: document.getElementById('mistOn').value,
+                mistOff: document.getElementById('mistOff').value,
+                enableVacuum: document.getElementById('enableVacuum').checked,
+                vacuumOn: document.getElementById('vacuumOn').value,
+                vacuumOff: document.getElementById('vacuumOff').value,
+                headerCode: document.getElementById('headerCode').value,
+                footerCode: document.getElementById('footerCode').value,
+                notes: document.getElementById('notes').value,
+                passDepths: passDepths
+            };
+        }
+
+        function applySettings(settings) {
+            document.getElementById('majorDiameter').value = settings.majorDiameter || 25;
+            document.getElementById('pitch').value = settings.pitch || 1;
+            document.getElementById('threadLength').value = settings.threadLength || 20;
+            document.getElementById('threadDirection').value = settings.threadDirection || 'right';
+            document.getElementById('targetDepth').value = settings.targetDepth || 0.58;
+            document.getElementById('zReference').value = settings.zReference || 'center';
+            document.getElementById('leadIn').value = settings.leadIn || 2;
+            document.getElementById('safeRetract').value = settings.safeRetract || 2;
+            document.getElementById('material').value = settings.material || 'aluminum';
+            document.getElementById('spindleSpeed').value = settings.spindleSpeed || 12000;
+            document.getElementById('feedRate').value = settings.feedRate || 900;
+            document.getElementById('vbitAngle').value = settings.vbitAngle || 60;
+            document.getElementById('flutes').value = settings.flutes || 3;
+            document.getElementById('numPasses').value = settings.numPasses || 4;
+            document.getElementById('retractStyle').value = settings.retractStyle || 'quick';
+            document.getElementById('testFitMode').checked = settings.testFitMode || false;
+            document.getElementById('finishingPass').checked = settings.finishingPass || false;
+            document.getElementById('startAngle').value = settings.startAngle || 0;
+            document.getElementById('dryRun').checked = settings.dryRun || false;
+            document.getElementById('enableMist').checked = settings.enableMist || false;
+            document.getElementById('mistOn').value = settings.mistOn || 'M7';
+            document.getElementById('mistOff').value = settings.mistOff || 'M9';
+            document.getElementById('enableVacuum').checked = settings.enableVacuum || false;
+            document.getElementById('vacuumOn').value = settings.vacuumOn || 'M8';
+            document.getElementById('vacuumOff').value = settings.vacuumOff || 'M9';
+            document.getElementById('headerCode').value = settings.headerCode || '';
+            document.getElementById('footerCode').value = settings.footerCode || '';
+            document.getElementById('notes').value = settings.notes || '';
+            
+            if (settings.passDepths && settings.passDepths.length > 0) {
+                passDepths = settings.passDepths;
+                renderPassesTable();
+            } else {
+                calculatePasses();
+            }
+            
+            updateCalculations();
+            updateMaterialRecommendations();
+        }
+
+        function savePreset() {
+            const name = document.getElementById('presetName').value.trim();
+            if (!name) {
+                alert('Enter a preset name first!');
+                return;
+            }
+            
+            const presets = JSON.parse(localStorage.getItem('threadPresets') || '{}');
+            presets[name] = getSettings();
+            localStorage.setItem('threadPresets', JSON.stringify(presets));
+            
+            loadPresetsToDropdown();
+            alert('Preset saved: ' + name);
+        }
+
+        function loadPresetsToDropdown() {
+            const presets = JSON.parse(localStorage.getItem('threadPresets') || '{}');
+            const select = document.getElementById('presetList');
+            select.innerHTML = '<option value="">-- Select Preset --</option>';
+            
+            Object.keys(presets).sort().forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                select.appendChild(option);
+            });
+        }
+
+        function loadPreset() {
+            const name = document.getElementById('presetList').value;
+            if (!name) return;
+            
+            const presets = JSON.parse(localStorage.getItem('threadPresets') || '{}');
+            if (presets[name]) {
+                applySettings(presets[name]);
+                document.getElementById('presetName').value = name;
+            }
+        }
+
+        function deletePreset() {
+            const name = document.getElementById('presetList').value;
+            if (!name) {
+                alert('Select a preset first!');
+                return;
+            }
+            
+            if (!confirm('Delete preset "' + name + '"?')) return;
+            
+            const presets = JSON.parse(localStorage.getItem('threadPresets') || '{}');
+            delete presets[name];
+            localStorage.setItem('threadPresets', JSON.stringify(presets));
+            
+            loadPresetsToDropdown();
+            document.getElementById('presetName').value = '';
+        }
+
+        function exportPresets() {
+            const presets = JSON.parse(localStorage.getItem('threadPresets') || '{}');
+            const blob = new Blob([JSON.stringify(presets, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'thread-presets.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importPresets(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    const existing = JSON.parse(localStorage.getItem('threadPresets') || '{}');
+                    const merged = { ...existing, ...imported };
+                    localStorage.setItem('threadPresets', JSON.stringify(merged));
+                    loadPresetsToDropdown();
+                    alert('Presets imported successfully!');
+                } catch (err) {
+                    alert('Error importing presets: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; // Reset file input
+        }
+    </script>
+</body>
+</html>
