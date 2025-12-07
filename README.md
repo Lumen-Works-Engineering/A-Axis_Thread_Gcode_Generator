@@ -69,4 +69,4 @@ For 60° metric threads:
 
 ## License
 
-GNU Version 3
+GPL Version 3
