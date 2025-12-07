@@ -1,4 +1,4 @@
-# A-Axis Thread G-code Generator
+# A-Axis Thread G-code Generator - LumenWorksEngineering.com
 
 A single-file HTML application for generating G-code to cut external (OD) threads on a CNC router with a 4th axis (A-axis) rotary table.
 
@@ -18,11 +18,13 @@ Fusion 360 has known limitations for helical groove/threading operations on the 
 ## Work Coordinate Setup
 
 **Recommended: Z=0 at A-axis centerline**
+
 - More consistent results regardless of stock diameter
 - Requires calibrated center-finding fixture
 - Thread depth = major radius - cut Z position
 
 **Alternative: Z=0 at stock surface**
+
 - Familiar touch-off method
 - Thread depth = negative Z values
 - Requires knowing exact stock diameter
@@ -42,6 +44,7 @@ Fusion 360 has known limitations for helical groove/threading operations on the 
 ## Thread Depth Reference
 
 For 60° metric threads:
+
 - Theoretical depth = pitch × 0.6134
 - M25x1: ~0.61mm theoretical, start at ~0.55-0.58mm
 - Always test fit and adjust
@@ -66,4 +69,4 @@ For 60° metric threads:
 
 ## License
 
-Personal use. Created for custom flashlight/laser manufacturing.
+GNU Version 3
