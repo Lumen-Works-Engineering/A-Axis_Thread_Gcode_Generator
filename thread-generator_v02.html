@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A-Axis Thread G-code Generator - LumenWorksEngineering.com</title>
+    <title>A-Axis Thread G-code Generator</title>
     <style>
         * {
             box-sizing: border-box;
@@ -72,6 +72,11 @@
         .inline-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .inline-group-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 15px;
         }
         .checkbox-group {
@@ -245,6 +250,18 @@
                 <label>Safe Retract Height (mm above surface)</label>
                 <input type="number" id="safeRetract" value="2" step="0.5" min="0.5">
             </div>
+            <div class="inline-group">
+                <div class="form-group">
+                    <label>Test Fit X Position (mm)</label>
+                    <input type="number" id="testFitX" value="0" step="5">
+                    <div class="recommendation">X position for test fitting</div>
+                </div>
+                <div class="form-group">
+                    <label>Test Fit Y Position (mm)</label>
+                    <input type="number" id="testFitY" value="50" step="5">
+                    <div class="recommendation">Y position for test fitting</div>
+                </div>
+            </div>
 
             <h2>Material & Speeds</h2>
             <div class="form-group">
@@ -413,7 +430,6 @@
     </div>
 
     <script>
-
         // Material recommendations
         const materialData = {
             aluminum: { spindleMin: 10000, spindleMax: 15000, feedMin: 600, feedMax: 1200 },
@@ -424,7 +440,7 @@
         };
 
         // Pass depth distribution (lathe practice)
-        const passDistribution = [0.40, 0.25, 0.20, 0.10, 0.05]; // For up to 5 passes
+        const passDistribution = [0.40, 0.25, 0.20, 0.10, 0.05];
 
         let passDepths = [];
 
@@ -435,7 +451,6 @@
             calculatePasses();
             updateMaterialRecommendations();
             
-            // Add event listeners for real-time updates
             document.getElementById('pitch').addEventListener('input', updateCalculations);
             document.getElementById('majorDiameter').addEventListener('input', updateCalculations);
             document.getElementById('targetDepth').addEventListener('input', calculatePasses);
@@ -449,17 +464,15 @@
             const pitch = parseFloat(document.getElementById('pitch').value) || 1;
             const majorDia = parseFloat(document.getElementById('majorDiameter').value) || 25;
             
-            // 60 degree thread depth = pitch * 0.6134
             const calcDepth = (pitch * 0.6134).toFixed(3);
             const rootDia = (majorDia - (2 * parseFloat(calcDepth))).toFixed(2);
             
             document.getElementById('calcDepth').textContent = calcDepth;
             document.getElementById('calcRootDia').textContent = rootDia;
             
-            // Update target depth suggestion
             const targetInput = document.getElementById('targetDepth');
             if (targetInput.value === '' || parseFloat(targetInput.value) > parseFloat(calcDepth)) {
-                targetInput.value = (parseFloat(calcDepth) * 0.95).toFixed(2); // Start 5% shallow
+                targetInput.value = (parseFloat(calcDepth) * 0.95).toFixed(2);
             }
         }
 
@@ -482,19 +495,16 @@
             passDepths = [];
             let cumulative = 0;
             
-            // Calculate pass depths using lathe distribution
             for (let i = 0; i < numPasses; i++) {
                 let ratio;
                 if (i < passDistribution.length) {
                     ratio = passDistribution[i];
                 } else {
-                    ratio = 0.05; // Minimum for extra passes
+                    ratio = 0.05;
                 }
                 
-                // Normalize ratios for actual number of passes
                 let normalizedDepth;
                 if (i === numPasses - 1) {
-                    // Last pass gets remainder to ensure we hit exact depth
                     normalizedDepth = totalDepth - cumulative;
                 } else {
                     normalizedDepth = totalDepth * ratio;
@@ -508,7 +518,6 @@
                 });
             }
             
-            // Add finishing pass if enabled
             if (finishingPass) {
                 passDepths.push({
                     depth: 0,
@@ -557,14 +566,12 @@
             
             passDepths[index].depth = newDepth;
             
-            // Recalculate cumulative and adjust last pass
             let cumulative = 0;
             for (let i = 0; i < passDepths.length; i++) {
                 if (passDepths[i].isFinishing) {
                     passDepths[i].cumulative = totalDepth;
                 } else if (i === passDepths.length - 1 || 
                           (i === passDepths.length - 2 && passDepths[passDepths.length-1].isFinishing)) {
-                    // Last cutting pass gets the remainder
                     passDepths[i].depth = totalDepth - cumulative;
                     passDepths[i].cumulative = totalDepth;
                 } else {
@@ -587,7 +594,6 @@
             header.classList.toggle('collapsed');
         }
 
-
         function generateGcode() {
             const majorDia = parseFloat(document.getElementById('majorDiameter').value);
             const pitch = parseFloat(document.getElementById('pitch').value);
@@ -597,6 +603,8 @@
             const zReference = document.getElementById('zReference').value;
             const leadIn = parseFloat(document.getElementById('leadIn').value);
             const safeRetract = parseFloat(document.getElementById('safeRetract').value);
+            const testFitX = parseFloat(document.getElementById('testFitX').value);
+            const testFitY = parseFloat(document.getElementById('testFitY').value);
             const spindleSpeed = parseInt(document.getElementById('spindleSpeed').value);
             const feedRate = parseInt(document.getElementById('feedRate').value);
             const retractStyle = document.getElementById('retractStyle').value;
@@ -612,14 +620,12 @@
             const footerCode = document.getElementById('footerCode').value.trim();
             const notes = document.getElementById('notes').value.trim();
             
-            // Calculate positions
             const radius = majorDia / 2;
             const totalRotations = threadLength / pitch;
             const totalAngle = totalRotations * 360;
             const aDirection = threadDirection === 'right' ? 1 : -1;
             const dryRunOffset = dryRun ? 5 : 0;
             
-            // Z position calculation
             let surfaceZ, safeZ;
             if (zReference === 'center') {
                 surfaceZ = radius + dryRunOffset;
@@ -631,7 +637,6 @@
             
             let gcode = [];
             
-            // Header comments
             gcode.push('; A-Axis Thread G-code Generator');
             gcode.push('; Generated: ' + new Date().toLocaleString());
             gcode.push(';');
@@ -644,7 +649,6 @@
             if (notes) gcode.push('; Notes: ' + notes);
             gcode.push('');
             
-            // Setup
             gcode.push('G21 G90          ; mm, absolute');
             gcode.push('G0 Z' + safeZ.toFixed(2) + ' X0 A' + startAngle);
             gcode.push('');
@@ -662,7 +666,6 @@
             
             gcode.push('');
             
-            // Generate passes
             let cumulativeDepth = 0;
             passDepths.forEach((pass, index) => {
                 const passNum = pass.isFinishing ? 'Finishing' : (index + 1);
@@ -684,31 +687,30 @@
                 gcode.push('G0 Z' + cutZ.toFixed(3));
                 gcode.push('G1 X' + endX.toFixed(2) + ' A' + endA.toFixed(1) + ' F' + feedRate);
                 
-                // Retract
                 if (retractStyle === 'spiral') {
-                    // Gentle spiral retract
                     gcode.push('G1 Z' + safeZ.toFixed(2) + ' A' + (endA + aDirection * 90).toFixed(1) + ' F' + (feedRate * 2));
                 } else {
-                    // Quick retract
                     gcode.push('G0 Z' + safeZ.toFixed(2));
                 }
                 
-                gcode.push('G0 X' + startX.toFixed(2) + ' A' + startAngle);
-                
-                // Pause if requested
                 if (pass.pause) {
+                    // Move to test fit position - well clear of the part
+                    gcode.push('G0 X' + testFitX.toFixed(2) + ' Y' + testFitY.toFixed(2) + '  ; Move clear for test fit');
                     gcode.push('M5               ; Spindle off for test fit');
                     if (enableMist) gcode.push(mistOff + '               ; Mist off');
                     gcode.push('M0               ; PAUSE - Test fit threads, then resume');
+                    gcode.push('G0 A' + startAngle + '         ; Return A to start position');
+                    gcode.push('G0 X' + startX.toFixed(2) + ' Y0  ; Return to thread start');
                     gcode.push('M3 S' + spindleSpeed + '        ; Spindle back on');
                     gcode.push('G4 P2            ; Wait for spindle');
                     if (enableMist) gcode.push(mistOn + '               ; Mist on');
+                } else {
+                    gcode.push('G0 X' + startX.toFixed(2) + ' A' + startAngle);
                 }
                 
                 gcode.push('');
             });
             
-            // Footer
             if (footerCode) {
                 gcode.push('; Custom footer');
                 gcode.push(footerCode);
@@ -752,7 +754,6 @@
             URL.revokeObjectURL(url);
         }
 
-
         // Preset management
         function getSettings() {
             return {
@@ -764,6 +765,8 @@
                 zReference: document.getElementById('zReference').value,
                 leadIn: document.getElementById('leadIn').value,
                 safeRetract: document.getElementById('safeRetract').value,
+                testFitX: document.getElementById('testFitX').value,
+                testFitY: document.getElementById('testFitY').value,
                 material: document.getElementById('material').value,
                 spindleSpeed: document.getElementById('spindleSpeed').value,
                 feedRate: document.getElementById('feedRate').value,
@@ -797,6 +800,8 @@
             document.getElementById('zReference').value = settings.zReference || 'center';
             document.getElementById('leadIn').value = settings.leadIn || 2;
             document.getElementById('safeRetract').value = settings.safeRetract || 2;
+            document.getElementById('testFitX').value = settings.testFitX || 0;
+            document.getElementById('testFitY').value = settings.testFitY || 50;
             document.getElementById('material').value = settings.material || 'aluminum';
             document.getElementById('spindleSpeed').value = settings.spindleSpeed || 12000;
             document.getElementById('feedRate').value = settings.feedRate || 900;
@@ -914,7 +919,7 @@
                 }
             };
             reader.readAsText(file);
-            event.target.value = ''; // Reset file input
+            event.target.value = '';
         }
     </script>
 </body>
